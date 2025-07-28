@@ -34,16 +34,19 @@ class SocketClient(BoxLayout):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
             s.connect((ip, port))
-            s.send("Привет, сервер!".encode("utf-8"))  # ✔ теперь корректно
+            s.send("Привет, сервер!".encode("utf-8"))
             response = s.recv(1024).decode()
             self.output_label.text = f"✅ Ответ: {response}"
             s.close()
-        except PermissionError:
-            self.output_label.text = "❌ Android запрещает доступ. Попробуй другой порт."
         except socket.timeout:
-            self.output_label.text = "⌛ Таймаут: сервер не отвечает"
+            self.output_label.text = "⌛ Сервер не отвечает (таймаут)"
+        except ConnectionRefusedError:
+            self.output_label.text = "🚫 Подключение отклонено — сервер не принимает соединения"
+        except OSError as e:
+            self.output_label.text = f"⚠️ Ошибка сокета: {e}"
         except Exception as e:
-            self.output_label.text = f"⚠️ Ошибка: {e}"
+            self.output_label.text = f"❌ Неизвестная ошибка: {e}"
+
 
 class SocketApp(App):
     def build(self):
