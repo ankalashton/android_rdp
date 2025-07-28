@@ -131,28 +131,28 @@ jobs:
       #     echo "P4A_RELEASE_KEYALIAS_PASSWD=$P4A_RELEASE_KEYALIAS_PASSWD" >> $GITHUB_ENV
       
             # Build FreeRDP for Android
-      - name: Download Android SDK & NDK
+      - name: Setup Android SDK & NDK
         run: |
-          mkdir -p $HOME/android
-          cd $HOME/android
+          mkdir -p $HOME/android/sdk/cmdline-tools
+          cd $HOME/android/sdk/cmdline-tools
 
-          # Download cmdline-tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip cmdline-tools.zip -d cmdline-tools
-
-          # Correct directory structure for SDK
-          mkdir -p sdk/cmdline-tools/latest
-          mv cmdline-tools/* sdk/cmdline-tools/latest/
+          # Download and extract command-line tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip tools.zip -d latest
 
           export ANDROID_HOME=$HOME/android/sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-          # Accept licenses and install tools
-          yes | sdkmanager --sdk_root=${ANDROID_HOME} --licenses
-          sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" "platforms;android-30" "ndk;25.2.9519653"
+          # Accept licenses and install packages
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
+            "platform-tools" \
+            "platforms;android-30" \
+            "ndk;25.2.9519653"
 
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "ANDROID_SDK=$ANDROID_HOME" >> $GITHUB_ENV
+
 
 
       # Build with Buildozer
