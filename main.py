@@ -1,43 +1,53 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
 import socket
 
-class RDPClient(BoxLayout):
+class SocketClient(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', **kwargs)
-        self.output = Label(text="Нажми для подключения к RDP", size_hint_y=0.8)
-        self.add_widget(self.output)
+        super(SocketClient, self).__init__(orientation="vertical", **kwargs)
 
-        btn = Button(text="Подключиться", size_hint_y=0.2)
-        btn.bind(on_press=self.connect_rdp)
-        self.add_widget(btn)
+        self.ip_input = TextInput(text="192.168.1.100", multiline=False, hint_text="IP адрес")
+        self.port_input = TextInput(text="8080", multiline=False, hint_text="Порт")
+        self.output_label = Label(text="Готов к подключению")
 
-    def connect_rdp(self, instance):
+        connect_btn = Button(text="Подключиться")
+        connect_btn.bind(on_press=self.connect_to_server)
+
+        self.add_widget(Label(text="Введи IP и порт"))
+        self.add_widget(self.ip_input)
+        self.add_widget(self.port_input)
+        self.add_widget(connect_btn)
+        self.add_widget(self.output_label)
+
+    def connect_to_server(self, instance):
+        ip = self.ip_input.text.strip()
         try:
-            ip = "192.168.130.39"  # 💡 Замените на IP вашего RDP-сервера
-            port = 3389
+            port = int(self.port_input.text.strip())
+        except ValueError:
+            self.output_label.text = "❌ Некорректный порт"
+            return
+
+        try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
             s.connect((ip, port))
-
-            pkt = bytes([
-                0x03, 0x00, 0x00, 0x13,
-                0x0e, 0xe0, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x01, 0x00, 0x08, 0x00, 0x03, 0x00, 0x00, 0x00
-            ])
-            s.send(pkt)
-            response = s.recv(1024)
+            s.send(b"Привет, сервер!")
+            response = s.recv(1024).decode()
+            self.output_label.text = f"✅ Ответ: {response}"
             s.close()
-
-            self.output.text = f"[RDP] Ответ: {response.hex()}"
+        except PermissionError:
+            self.output_label.text = "❌ Android запрещает доступ. Попробуй другой порт."
+        except socket.timeout:
+            self.output_label.text = "⌛ Таймаут: сервер не отвечает"
         except Exception as e:
-            self.output.text = f"[Ошибка] {str(e)}"
+            self.output_label.text = f"⚠️ Ошибка: {e}"
 
-class RDPApp(App):
+class SocketApp(App):
     def build(self):
-        return RDPClient()
+        return SocketClient()
 
 if __name__ == "__main__":
-    RDPApp().run()
+    SocketApp().run()
