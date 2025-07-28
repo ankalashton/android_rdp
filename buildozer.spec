@@ -451,4 +451,4 @@ warn_on_root = 1
 #
 #buildozer --profile demo android debug
 
-android.permissions = INTERNET
+android.permissions = INTERNET, ACCESS_NETWORK_STATE
