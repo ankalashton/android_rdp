@@ -131,37 +131,29 @@ jobs:
       #     echo "P4A_RELEASE_KEYALIAS_PASSWD=$P4A_RELEASE_KEYALIAS_PASSWD" >> $GITHUB_ENV
       
             # Build FreeRDP for Android
-      - name: Build FreeRDP
+      - name: Download Android SDK & NDK
         run: |
-          sudo apt-get install -y ninja-build
           mkdir -p $HOME/android
           cd $HOME/android
 
-          # SDK & NDK
+          # Download cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip cmdline-tools.zip -d cmdline-tools
-          mkdir -p sdk/cmdline-tools
-          mv cmdline-tools sdk/cmdline-tools/latest
+
+          # Correct directory structure for SDK
+          mkdir -p sdk/cmdline-tools/latest
+          mv cmdline-tools/* sdk/cmdline-tools/latest/
 
           export ANDROID_HOME=$HOME/android/sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-30" "ndk;25.2.9519653"
 
-          export ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653
-          export ANDROID_SDK=$ANDROID_HOME
+          # Accept licenses and install tools
+          yes | sdkmanager --sdk_root=${ANDROID_HOME} --licenses
+          sdkmanager --sdk_root=${ANDROID_HOME} "platform-tools" "platforms;android-30" "ndk;25.2.9519653"
 
-          # Clone and build FreeRDP
-          git clone --branch stable-2.10 https://github.com/FreeRDP/FreeRDP.git
-          cd FreeRDP/scripts
-          chmod +x android-build-freerdp.sh
-          ./android-build-freerdp.sh --ndk $ANDROID_NDK --sdk $ANDROID_SDK
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "ANDROID_SDK=$ANDROID_HOME" >> $GITHUB_ENV
 
-      - name: Upload FreeRDP .so libs
-        uses: actions/upload-artifact@v4
-        with:
-          name: freerdp-libs
-          path: FreeRDP/android-build/armeabi-v7a
 
       # Build with Buildozer
       - name: Build with Buildozer
