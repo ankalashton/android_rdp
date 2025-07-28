@@ -136,14 +136,20 @@ jobs:
           mkdir -p $HOME/android/sdk/cmdline-tools
           cd $HOME/android/sdk/cmdline-tools
 
-          # Download and extract command-line tools
+          # 📦 Скачиваем cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-          unzip tools.zip -d latest
+          unzip tools.zip -d temp
+          mkdir -p latest
+          mv temp/* latest/
 
+          # ✅ Экспортируем переменные
           export ANDROID_HOME=$HOME/android/sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
 
-          # Accept licenses and install packages
+          # 📍 Проверяем наличие sdkmanager
+          ls $ANDROID_HOME/cmdline-tools/latest/bin
+
+          # 🛠️ Устанавливаем компоненты
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
             "platform-tools" \
@@ -152,6 +158,7 @@ jobs:
 
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
           echo "ANDROID_SDK=$ANDROID_HOME" >> $GITHUB_ENV
+
 
 
 
