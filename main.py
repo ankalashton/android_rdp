@@ -9,7 +9,7 @@ class RDPClient(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.add_widget(Label(text="🔌 Подключение к RDP..."))
-        self.connect_rdp("192.168.1.100", 3389)
+        self.connect_rdp("192.168.130.39", 3389)
 
     def connect_rdp(self, ip, port):
         factory = RDPClientFactory()
