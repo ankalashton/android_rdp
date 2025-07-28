@@ -9,7 +9,7 @@ class SocketClient(BoxLayout):
     def __init__(self, **kwargs):
         super(SocketClient, self).__init__(orientation="vertical", **kwargs)
 
-        self.ip_input = TextInput(text="192.168.1.100", multiline=False, hint_text="IP адрес")
+        self.ip_input = TextInput(text="192.168.130.39", multiline=False, hint_text="IP адрес")
         self.port_input = TextInput(text="8080", multiline=False, hint_text="Порт")
         self.output_label = Label(text="Готов к подключению")
 
@@ -34,7 +34,7 @@ class SocketClient(BoxLayout):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
             s.connect((ip, port))
-            s.send(b"Привет, сервер!")
+            s.send("Привет, сервер!".encode("utf-8"))  # ✔ теперь корректно
             response = s.recv(1024).decode()
             self.output_label.text = f"✅ Ответ: {response}"
             s.close()
