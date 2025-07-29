@@ -1,69 +1,83 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 import socket
 
-class RDPClient(BoxLayout):
+def generate_client_info_pdu(username, password, domain, client_name="RDP-COPILOT", working_dir="C:\\"):
+    def to_unicode_bytes(s):
+        return s.encode("utf-16le") + b"\x00\x00"
+
+    user_bytes = to_unicode_bytes(username)
+    pass_bytes = to_unicode_bytes(password)
+    domain_bytes = to_unicode_bytes(domain)
+    client_bytes = to_unicode_bytes(client_name)
+    dir_bytes = to_unicode_bytes(working_dir)
+
+    pdu = b""
+    pdu += b"\x03\x00"              # TPKT Header
+    pdu += b"\x00\x00"              # Placeholder for length
+    pdu += b"\x02\xf0\x80"          # X.224 Header
+    pdu += b"\x64\x00\x06\x03\xf0\x7f"  # MCS Header (simplified)
+
+    pdu += b"\x00\x00\x00\x00"      # CodePage = Unicode
+    pdu += b"\x01\x00\x00\x00"      # Flags
+
+    pdu += user_bytes
+    pdu += domain_bytes
+    pdu += pass_bytes
+    pdu += client_bytes
+    pdu += dir_bytes
+
+    total_length = len(pdu)
+    pdu = pdu[:2] + total_length.to_bytes(2, "big") + pdu[4:]
+    return pdu
+
+class RDPAutoLogin(BoxLayout):
     def __init__(self, **kwargs):
-        super(RDPClient, self).__init__(orientation="vertical", **kwargs)
+        super(RDPAutoLogin, self).__init__(orientation="vertical", **kwargs)
 
-        self.ip_input = TextInput(text="192.168.130.39", multiline=False, hint_text="IP адрес")
-        self.port_input = TextInput(text="3389", multiline=False, hint_text="Порт")
-        self.output_label = Label(text="Готов к проверке", size_hint_y=0.3)
+        self.status_label = Label(text="🔐 RDP Login Panel", font_size=22)
+        connect_btn = Button(text="Connect as afirnd")
+        connect_btn.bind(on_press=self.auto_connect)
 
-        check_btn = Button(text="Проверить доступность")
-        check_btn.bind(on_press=self.check_availability)
-
-        connect_btn = Button(text="Отправить X.224 пакет")
-        connect_btn.bind(on_press=self.send_x224)
-
-        self.add_widget(Label(text="Введи IP и порт"))
-        self.add_widget(self.ip_input)
-        self.add_widget(self.port_input)
-        self.add_widget(check_btn)
+        self.add_widget(self.status_label)
         self.add_widget(connect_btn)
-        self.add_widget(self.output_label)
 
-    def check_availability(self, instance):
-        ip = self.ip_input.text.strip()
-        try:
-            port = int(self.port_input.text.strip())
-            with socket.create_connection((ip, port), timeout=3):
-                self.output_label.text = f"✅ Сервер {ip}:{port} доступен"
-        except socket.timeout:
-            self.output_label.text = f"⌛ Таймаут: сервер {ip}:{port} не отвечает"
-        except Exception as e:
-            self.output_label.text = f"❌ Недоступен: {e}"
+    def auto_connect(self, instance):
+        ip = "192.168.130.39"
+        port = 3389
 
-    def send_x224(self, instance):
-        ip = self.ip_input.text.strip()
         try:
-            port = int(self.port_input.text.strip())
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(5)
             s.connect((ip, port))
 
-            # X.224 Connection Request (19 байт)
-            pkt = bytes([
-                0x03, 0x00, 0x00, 0x13,  # TPKT header
-                0x0e, 0xe0, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x01, 0x00, 0x08, 0x00, 0x03,
+            # Отправка X.224
+            x224 = bytes([
+                0x03, 0x00, 0x00, 0x13,
+                0x0e, 0xe0, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x01,
+                0x00, 0x08, 0x00, 0x03,
                 0x00, 0x00, 0x00
             ])
-            s.send(pkt)
-            response = s.recv(1024)
+            s.send(x224)
+            s.recv(1024)
+
+            # Генерация и отправка Client Info PDU
+            pdu = generate_client_info_pdu("afirnd", "afifarm5!", "")
+            s.send(pdu)
+            response = s.recv(2048)
             s.close()
 
-            hex_response = response.hex()
-            self.output_label.text = f"📨 Ответ от сервера:\n{hex_response[:64]}..."
+            hex_resp = response.hex()[:64]
+            self.status_label.text = f"📨 Server Response:\n{hex_resp}..."
         except Exception as e:
-            self.output_label.text = f"⚠️ Ошибка при отправке: {e}"
+            self.status_label.text = f"⚠️ Connection failed: {e}"
 
-class RDPApp(App):
+class RDPAutoLoginApp(App):
     def build(self):
-        return RDPClient()
+        return RDPAutoLogin()
 
 if __name__ == "__main__":
-    RDPApp().run()
+    RDPAutoLoginApp().run()
