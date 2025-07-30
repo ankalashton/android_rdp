@@ -9,6 +9,9 @@ from android.permissions import request_permissions, Permission
 from jnius import autoclass
 import socket, threading
 
+# 🔐 SMB-фильтрация
+from smb.SMBConnection import SMBConnection
+
 # 📲 Запрос разрешений
 request_permissions([
     Permission.ACCESS_FINE_LOCATION,
@@ -24,6 +27,16 @@ def get_current_wifi_ssid():
     info = wifi_service.getConnectionInfo()
     ssid = info.getSSID()
     return ssid[1:-1] if ssid.startswith('"') and ssid.endswith('"') else ssid
+
+# 🔍 Проверка на наличие RMC.exe
+def has_robot_file(ip):
+    try:
+        conn = SMBConnection('guest', '', 'android', 'target', use_ntlm_v2=True)
+        conn.connect(ip, 445, timeout=2)
+        files = conn.listPath('Afimilk', '/Robot')
+        return any(f.filename.lower() == 'rmc.exe' for f in files)
+    except:
+        return False
 
 class WifiScanner(BoxLayout):
     def __init__(self, **kwargs):
@@ -77,19 +90,22 @@ class WifiScanner(BoxLayout):
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(0.5)
                 if s.connect_ex((ip, 445)) == 0:
-                    try:
-                        name = socket.gethostbyaddr(ip)[0]
-                    except:
-                        name = "Unknown"
-                    self.add_device(name, ip)
-                    found += 1
+                    if has_robot_file(ip):
+                        try:
+                            name = socket.gethostbyaddr(ip)[0]
+                        except:
+                            name = "Unknown"
+                        self.add_device(name, ip)
+                        found += 1
+                    else:
+                        print(f"⛔ {ip}: нет RMC.exe")
                 s.close()
             except:
                 pass
-            if i % 20 == 0:  # Обновление статуса каждые 20 IP
+            if i % 20 == 0:
                 self.update_status(f"🔎 Сканируется: {ip} | Найдено: {found}")
 
-        self.update_status(f"✅ Сканирование завершено. Устройств: {found}")
+        self.update_status(f"✅ Сканирование завершено. Устройств с RMC.exe: {found}")
 
 class WifiApp(App):
     def build(self):
