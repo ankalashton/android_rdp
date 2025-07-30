@@ -9,7 +9,7 @@ from android.permissions import request_permissions, Permission
 from jnius import autoclass
 import socket, threading
 
-# ⛔ Запрос разрешений
+# 📲 Запрос разрешений
 request_permissions([
     Permission.ACCESS_FINE_LOCATION,
     Permission.ACCESS_WIFI_STATE
@@ -29,24 +29,24 @@ class WifiScanner(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
 
-        # 📡 Отображение SSID
         self.label = Label(text="📡 Сеть: —", font_size=24, size_hint_y=None, height=50)
+        self.status_label = Label(text="🕒 Готов к сканированию", font_size=20, size_hint_y=None, height=40)
+
         refresh_btn = Button(text="🔄 Обновить сеть", size_hint_y=None, height=50)
         refresh_btn.bind(on_press=self.update_ssid)
 
-        # 🌐 Список устройств
+        scan_btn = Button(text="📥 Сканировать сеть", size_hint_y=None, height=50)
+        scan_btn.bind(on_press=self.start_scan)
+
         self.device_list = GridLayout(cols=1, size_hint_y=None)
         self.device_list.bind(minimum_height=self.device_list.setter('height'))
         scroll = ScrollView()
         scroll.add_widget(self.device_list)
 
-        scan_btn = Button(text="📥 Сканировать сеть", size_hint_y=None, height=50)
-        scan_btn.bind(on_press=self.start_scan)
-
-        # 📋 Интерфейс
         self.add_widget(self.label)
         self.add_widget(refresh_btn)
         self.add_widget(scan_btn)
+        self.add_widget(self.status_label)
         self.add_widget(scroll)
 
         self.update_ssid()
@@ -56,14 +56,20 @@ class WifiScanner(BoxLayout):
 
     @mainthread
     def add_device(self, name, ip):
-        label = Label(text=f"🔌 {name} @ {ip}", size_hint_y=None, height=40)
-        self.device_list.add_widget(label)
+        item = Label(text=f"🔌 {name} @ {ip}", size_hint_y=None, height=40)
+        self.device_list.add_widget(item)
+
+    @mainthread
+    def update_status(self, text):
+        self.status_label.text = text
 
     def start_scan(self, *args):
         self.device_list.clear_widgets()
+        self.update_status("🔍 Идёт сканирование сети...")
         threading.Thread(target=self.scan_network).start()
 
     def scan_network(self):
+        found = 0
         prefix = "192.168.130."
         for i in range(6, 255):
             ip = f"{prefix}{i}"
@@ -76,9 +82,14 @@ class WifiScanner(BoxLayout):
                     except:
                         name = "Unknown"
                     self.add_device(name, ip)
+                    found += 1
                 s.close()
             except:
                 pass
+            if i % 20 == 0:  # Обновление статуса каждые 20 IP
+                self.update_status(f"🔎 Сканируется: {ip} | Найдено: {found}")
+
+        self.update_status(f"✅ Сканирование завершено. Устройств: {found}")
 
 class WifiApp(App):
     def build(self):
