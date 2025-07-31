@@ -32,8 +32,8 @@ class WifiScanner(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
         self.subnet = "192.168.130."
-        self.login = "anonymous"
-        self.password = ""
+        self.login = "afirnd"
+        self.password = "afifarm5!"
         self.timeout = 4
         self.devices = []
 
