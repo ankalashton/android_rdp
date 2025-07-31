@@ -12,7 +12,7 @@ import threading
 from ftplib import FTP
 import time
 
-# 📲 Разрешения
+# 📲 Разрешения Android
 request_permissions([
     Permission.ACCESS_FINE_LOCATION,
     Permission.ACCESS_WIFI_STATE,
@@ -20,7 +20,7 @@ request_permissions([
     Permission.WRITE_EXTERNAL_STORAGE
 ])
 
-# 📡 Получение текущего SSID
+# 📡 Получение SSID сети
 def get_current_wifi_ssid():
     Context = autoclass('android.content.Context')
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
@@ -45,11 +45,11 @@ class WifiScanner(BoxLayout):
         refresh_btn = Button(text="🔄 Обновить сеть", size_hint_y=None, height=50)
         refresh_btn.bind(on_press=self.update_ssid)
 
-        scan_ftp_btn = Button(text="📁 Сканировать FTP", size_hint_y=None, height=50)
-        scan_ftp_btn.bind(on_press=self.start_ftp_scan)
+        scan_btn = Button(text="📁 Сканировать FTP", size_hint_y=None, height=50)
+        scan_btn.bind(on_press=self.start_ftp_scan)
 
-        check_path_btn = Button(text="🔍 Проверить путь FTP", size_hint_y=None, height=50)
-        check_path_btn.bind(on_press=self.check_path_prompt)
+        check_rmc_btn = Button(text="🔍 Найти RMC.exe", size_hint_y=None, height=50)
+        check_rmc_btn.bind(on_press=self.find_rmc_prompt)
 
         self.device_list = GridLayout(cols=1, size_hint_y=None)
         self.device_list.bind(minimum_height=self.device_list.setter('height'))
@@ -58,8 +58,8 @@ class WifiScanner(BoxLayout):
 
         self.add_widget(self.label)
         self.add_widget(refresh_btn)
-        self.add_widget(scan_ftp_btn)
-        self.add_widget(check_path_btn)
+        self.add_widget(scan_btn)
+        self.add_widget(check_rmc_btn)
         self.add_widget(self.status_label)
         self.add_widget(scroll)
 
@@ -103,32 +103,49 @@ class WifiScanner(BoxLayout):
             except Exception as e:
                 self.add_device(f"❌ {e.__class__.__name__}", ip)
             time.sleep(0.05)
-
             if i % 20 == 0:
                 self.update_status(f"🔎 FTP: {ip} | Найдено: {found}")
         self.update_status(f"✅ Сканирование завершено: {found} сервер(ов)")
 
-    def check_path_prompt(self, *args):
-        threading.Thread(target=self.check_ftp_path_thread).start()
+    def find_rmc_prompt(self, *args):
+        threading.Thread(target=self.find_rmc_thread).start()
 
-    def check_ftp_path_thread(self):
-        self.update_status("🔍 Проверка пути FTP...")
+    def find_rmc_thread(self):
+        self.update_status("🔍 Поиск RMC.exe...")
+        path_segments = ["Afimilk", "Robot"]
+        filename = "RMC.exe"
+
         for i in range(1, 255):
             ip = f"{self.subnet}{i}"
             try:
                 ftp = FTP()
                 ftp.connect(ip, 21, timeout=self.timeout)
                 ftp.login(self.login, self.password)
-                ftp.cwd("AFIFARM/Photos/Camera")
-                files = ftp.nlst()
-                ftp.quit()
-                self.show_files(files, ip)
+                ftp.set_pasv(True)
+
+                # Пошаговая навигация
+                for folder in path_segments:
+                    try:
+                        ftp.cwd(folder)
+                        self.add_device(f"📂 Перешёл в '{folder}'", ip)
+                    except Exception as e:
+                        self.add_device(f"❌ Ошибка в '{folder}': {e}", ip)
+                        ftp.quit()
+                        break
+                else:
+                    files = ftp.nlst()
+                    if filename in files:
+                        self.add_device(f"✅ Найден RMC.exe!", ip)
+                    else:
+                        self.add_device(f"❌ RMC.exe не найден", ip)
+                    ftp.quit()
+
             except Exception as e:
                 self.add_device(f"❌ {e.__class__.__name__}", ip)
             time.sleep(0.05)
             if i % 20 == 0:
-                self.update_status(f"📁 Путь: {ip}")
-        self.update_status("✅ Проверка пути завершена")
+                self.update_status(f"📁 Поиск: {ip}")
+        self.update_status("✅ Поиск RMC.exe завершён")
 
 class WifiApp(App):
     def build(self):
