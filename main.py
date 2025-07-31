@@ -10,6 +10,7 @@ from jnius import autoclass
 import socket
 import threading
 from ftplib import FTP
+import time
 
 # 📲 Разрешения
 request_permissions([
@@ -30,6 +31,11 @@ def get_current_wifi_ssid():
 class WifiScanner(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
+        self.subnet = "192.168.130."
+        self.login = "anonymous"
+        self.password = ""
+        self.timeout = 4
+        self.devices = []
 
         self.label = Label(text="📡 Сеть: —", font_size=24, size_hint_y=None, height=50)
         self.status_label = Label(text="🕒 Готов к сканированию FTP", font_size=20, size_hint_y=None, height=40)
@@ -67,26 +73,28 @@ class WifiScanner(BoxLayout):
 
     def start_ftp_scan(self, *args):
         self.device_list.clear_widgets()
+        self.devices = []
         self.update_status("📁 Сканирование FTP...")
         threading.Thread(target=self.scan_ftp).start()
 
     def scan_ftp(self):
         found = 0
-        prefix = "192.168.130."
-        for i in range(6, 255):
-            ip = f"{prefix}{i}"
+        for i in range(1, 255):
+            ip = f"{self.subnet}{i}"
             try:
                 ftp = FTP()
-                ftp.connect(ip, 21, timeout=2)
-                ftp.login()  # anonymous login
+                ftp.connect(ip, 21, timeout=self.timeout)
+                ftp.login(self.login, self.password)
                 ftp.quit()
-                self.add_device("FTP-сервер", ip)
+                self.add_device("✅ FTP-сервер", ip)
                 found += 1
-            except:
-                pass
+            except Exception as e:
+                self.add_device(f"❌ {e.__class__.__name__}", ip)
+            time.sleep(0.05)
+
             if i % 20 == 0:
                 self.update_status(f"🔎 FTP: {ip} | Найдено: {found}")
-        self.update_status(f"✅ FTP завершено. Найдено: {found}")
+        self.update_status(f"✅ Сканирование завершено: {found} сервер(ов)")
 
 class WifiApp(App):
     def build(self):
