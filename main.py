@@ -7,10 +7,9 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.clock import Clock, mainthread
 from android.permissions import request_permissions, Permission
 from jnius import autoclass
-import socket, threading
-
-# 🔐 SMB-фильтрация
-from smb.SMBConnection import SMBConnection
+import socket
+import threading
+import requests
 
 # 📲 Запрос разрешений
 request_permissions([
@@ -28,16 +27,6 @@ def get_current_wifi_ssid():
     ssid = info.getSSID()
     return ssid[1:-1] if ssid.startswith('"') and ssid.endswith('"') else ssid
 
-# 🔍 Проверка на наличие RMC.exe
-def has_robot_file(ip):
-    try:
-        conn = SMBConnection('guest', '', 'android', 'target', use_ntlm_v2=True)
-        conn.connect(ip, 445, timeout=2)
-        files = conn.listPath('Afimilk', '/Robot')
-        return any(f.filename.lower() == 'rmc.exe' for f in files)
-    except:
-        return False
-
 class WifiScanner(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
@@ -48,7 +37,7 @@ class WifiScanner(BoxLayout):
         refresh_btn = Button(text="🔄 Обновить сеть", size_hint_y=None, height=50)
         refresh_btn.bind(on_press=self.update_ssid)
 
-        scan_btn = Button(text="📥 Сканировать сеть", size_hint_y=None, height=50)
+        scan_btn = Button(text="🌐 Сканировать HTTP", size_hint_y=None, height=50)
         scan_btn.bind(on_press=self.start_scan)
 
         self.device_list = GridLayout(cols=1, size_hint_y=None)
@@ -69,7 +58,7 @@ class WifiScanner(BoxLayout):
 
     @mainthread
     def add_device(self, name, ip):
-        item = Label(text=f"🔌 {name} @ {ip}", size_hint_y=None, height=40)
+        item = Label(text=f"🌐 {name} @ {ip}", size_hint_y=None, height=40)
         self.device_list.add_widget(item)
 
     @mainthread
@@ -78,8 +67,16 @@ class WifiScanner(BoxLayout):
 
     def start_scan(self, *args):
         self.device_list.clear_widgets()
-        self.update_status("🔍 Идёт сканирование сети...")
+        self.update_status("🔍 Сканирование HTTP-серверов...")
         threading.Thread(target=self.scan_network).start()
+
+    def http_ping(self, ip):
+        try:
+            url = f"http://{ip}/"
+            r = requests.get(url, timeout=1)
+            return r.status_code in [200, 401, 403]
+        except:
+            return False
 
     def scan_network(self):
         found = 0
@@ -89,23 +86,21 @@ class WifiScanner(BoxLayout):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(0.5)
-                if s.connect_ex((ip, 445)) == 0:
-                    if has_robot_file(ip):
+                if s.connect_ex((ip, 80)) == 0:
+                    if self.http_ping(ip):
                         try:
                             name = socket.gethostbyaddr(ip)[0]
                         except:
                             name = "Unknown"
                         self.add_device(name, ip)
                         found += 1
-                    else:
-                        print(f"⛔ {ip}: нет RMC.exe")
                 s.close()
             except:
                 pass
             if i % 20 == 0:
-                self.update_status(f"🔎 Сканируется: {ip} | Найдено: {found}")
+                self.update_status(f"🔎 Сканируется: {ip} | HTTP-серверов: {found}")
 
-        self.update_status(f"✅ Сканирование завершено. Устройств с RMC.exe: {found}")
+        self.update_status(f"✅ Сканирование завершено. Найдено HTTP-серверов: {found}")
 
 class WifiApp(App):
     def build(self):
