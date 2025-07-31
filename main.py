@@ -36,7 +36,7 @@ class WifiScanner(BoxLayout):
         self.subnet = "192.168.130."
         self.login = "afirnd"
         self.password = "afifarm5!"
-        self.timeout = 4
+        self.timeout = 1
         self.devices = []
 
         self.label = Label(text="📡 Сеть: —", font_size=24, size_hint_y=None, height=50)
