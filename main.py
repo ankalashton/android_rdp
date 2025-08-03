@@ -1,70 +1,59 @@
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+
 import uuid
 from smbprotocol.connection import Connection
 from smbprotocol.session import Session
 from smbprotocol.tree import TreeConnect
 from smbprotocol.open import Open
 
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.button import Button
-from kivy.uix.popup import Popup
+USERNAME = "YourUsername"     # ← Укажи логин
+PASSWORD = "YourPassword"     # ← Укажи пароль
+ROBOT_IP = "192.168.130.39"   # ← Укажи IP робота
 
-SERVER_IP = "192.168.130.39"
-USERNAME = "afirnd"
-PASSWORD = "afifarm5!"
-SHARE_NAME = "Afimilk"
+class SMBCheckApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
 
-class FileList(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', spacing=10, padding=10, **kwargs)
-        self.load_files()
+        self.status_label = Label(text="Нажми кнопку для проверки RMC.exe", font_size=18)
+        check_button = Button(text="Проверить файл", size_hint=(1, 0.3), font_size=20)
+        check_button.bind(on_press=self.check_robot)
 
-    def show_error(self, msg):
-        popup = Popup(title='Ошибка', content=Label(text=msg),
-                      size_hint=(None, None), size=(400, 200))
-        popup.open()
+        layout.add_widget(self.status_label)
+        layout.add_widget(check_button)
 
-    def load_files(self):
+        return layout
+
+    def check_robot(self, instance):
+        self.status_label.text = "🔄 Проверка файла..."
+        if self._check_robot_file():
+            self.status_label.text = "✅ Файл RMC.exe найден!"
+        else:
+            self.status_label.text = "❌ Файл не найден или недоступен."
+
+    def _check_robot_file(self):
         try:
-            conn = Connection(uuid.uuid4(), SERVER_IP, 445)
+            conn_id = uuid.uuid4()
+            conn = Connection(conn_id, ROBOT_IP, 445)
             conn.connect()
 
             session = Session(conn, USERNAME, PASSWORD)
             session.connect()
 
-            tree = TreeConnect(session, fr"\\{SERVER_IP}\{SHARE_NAME}")
+            tree = TreeConnect(session, fr"\\{ROBOT_IP}\Afimilk")
             tree.connect()
 
-            directory = Open(tree, "", access=0x00000001)
-            directory.create()
+            file = Open(tree, r"Robot\RMC.exe")
+            file.open()
+            file.close()
 
-            scroll = ScrollView()
-            files_container = BoxLayout(orientation='vertical', size_hint_y=None)
-            files_container.bind(minimum_height=files_container.setter('height'))
-
-            for file_info in directory.query_directory("*"):
-                name = file_info.file_name
-                if not name.startswith("."):
-                    btn = Button(text=name, size_hint_y=None, height=40)
-                    btn.bind(on_release=lambda btn: self.show_error(f"Вы выбрали файл: {btn.text}"))
-                    files_container.add_widget(btn)
-
-            directory.close()
-            tree.disconnect()
-            session.disconnect()
             conn.disconnect()
-
-            scroll.add_widget(files_container)
-            self.add_widget(scroll)
-
+            return True
         except Exception as e:
-            self.show_error(str(e))
-
-class SMBApp(App):
-    def build(self):
-        return FileList()
+            print("[Ошибка подключения SMB]:", e)
+            return False
 
 if __name__ == "__main__":
-    SMBApp().run()
+    SMBCheckApp().run()
