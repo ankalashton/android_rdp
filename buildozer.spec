@@ -36,8 +36,8 @@ version = 0.1
 # version.filename = %(source.dir)s/main.py
 
 # (list) Application requirements
-# comma separated e.g. requirements = sqlite3,kivy
-requirements = python3, kivy==2.3.1, https://github.com/kivymd/KivyMD/archive/master.zip, exceptiongroup, asynckivy, asyncgui, materialyoucolor, android, pysmb, tqdm, pyasn1
+# comma separated e.g. requirements = sqlite3, kivy
+requirements = python3==3.11, kivy==2.3.1, exceptiongroup, asynckivy, asyncgui, materialyoucolor, android, pysmb, tqdm, pyasn1
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
