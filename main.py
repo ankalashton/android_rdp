@@ -1,10 +1,8 @@
 import uuid
-import os
 from smbprotocol.connection import Connection
 from smbprotocol.session import Session
 from smbprotocol.tree import TreeConnect
 from smbprotocol.open import Open
-from smbprotocol.list import List
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -13,7 +11,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 
-# Настройки SMB подключения
 SERVER_IP = "192.168.130.39"
 USERNAME = "afirnd"
 PASSWORD = "afifarm5!"
@@ -31,27 +28,33 @@ class FileList(BoxLayout):
 
     def load_files(self):
         try:
-            # SMB-подключение
             conn = Connection(uuid.uuid4(), SERVER_IP, 445)
             conn.connect()
+
             session = Session(conn, USERNAME, PASSWORD)
             session.connect()
-            tree = TreeConnect(session, f"\\\\{SERVER_IP}\\{SHARE_NAME}")
+
+            tree = TreeConnect(session, fr"\\{SERVER_IP}\{SHARE_NAME}")
             tree.connect()
 
-            listing = List(tree, "")
-            listing_result = listing.list()
+            directory = Open(tree, "", access=0x00000001)
+            directory.create()
 
             scroll = ScrollView()
             files_container = BoxLayout(orientation='vertical', size_hint_y=None)
             files_container.bind(minimum_height=files_container.setter('height'))
 
-            for item in listing_result:
-                name = item.file_name
-                if not name.startswith("."):  # Пропустить скрытые файлы
+            for file_info in directory.query_directory("*"):
+                name = file_info.file_name
+                if not name.startswith("."):
                     btn = Button(text=name, size_hint_y=None, height=40)
                     btn.bind(on_release=lambda btn: self.show_error(f"Вы выбрали файл: {btn.text}"))
                     files_container.add_widget(btn)
+
+            directory.close()
+            tree.disconnect()
+            session.disconnect()
+            conn.disconnect()
 
             scroll.add_widget(files_container)
             self.add_widget(scroll)
