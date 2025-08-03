@@ -1,83 +1,47 @@
-from kivy.app import App
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.boxlayout import BoxLayout
+import socket
 from smb.SMBConnection import SMBConnection
-import threading
 
-# Константы подключения
-USERNAME = "afirnd"
-PASSWORD = "afifarm5!"
 IP_ADDRESS = "192.168.130.39"
-SHARE_NAME = "Afimilk"
-FOLDER = "Robot"
-TARGET_FILE = "RMC.exe"
+PORT = 445
+USERNAME = "afirnd"
+PASSWORD = "afifarm5!"  # Замени на свой пароль
+SERVICE_NAME = "Afimilk"  # Замени на имя общего ресурса
 
-class SMBChecker(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(orientation='vertical', **kwargs)
 
-        self.result_label = Label(
-            text="🕒 Готов к проверке",
-            font_size=20,
-            size_hint_y=None,
-            height=50
-        )
+def check_port(ip, port):
+    sock = socket.socket()
+    sock.settimeout(3)
+    try:
+        sock.connect((ip, port))
+        print(f"✅ Порт {port} на {ip} доступен.")
+        return True
+    except Exception as e:
+        print(f"❌ Порт {port} недоступен: {e}")
+        return False
 
-        check_btn = Button(
-            text="🔍 Проверить RMC.exe",
-            size_hint_y=None,
-            height=50
-        )
-        check_btn.bind(on_press=self.start_check)
+def connect_to_smb():
+    print("🔎 Проверка порта...")
+    if not check_port(IP_ADDRESS, PORT):
+        print("⛔ Соединение невозможно: порт недоступен.")
+        return
 
-        self.add_widget(self.result_label)
-        self.add_widget(check_btn)
-
-    def start_check(self, *args):
-        self.result_label.text = "⏳ Идёт проверка..."
-        threading.Thread(target=self.check_file).start()
-
-    def check_file(self):
-        try:
-            print("🔗 Пытаемся подключиться к SMB...")
-            conn = SMBConnection(
-                USERNAME,
-                PASSWORD,
-                "android_kivy",   # имя клиента
-                "smb_host",       # имя хоста
-                use_ntlm_v2=True
-            )
-
-            connected = conn.connect(IP_ADDRESS, 445, timeout=5)
-            if connected:
-                print("✅ Успешное подключение к SMB.")
-                files = conn.listPath(SHARE_NAME, f"/{FOLDER}")
-                print(f"📁 Получено {len(files)} файлов:")
-                for f in files:
-                    print(" -", f.filename)
-
-                found = any(f.filename.lower() == TARGET_FILE.lower() for f in files)
-                if found:
-                    self.update_label(f"✅ Файл {TARGET_FILE} найден!")
-                else:
-                    self.update_label(f"❌ Файл {TARGET_FILE} не найден.")
-            else:
-                self.update_label("🔌 Не удалось подключиться к SMB.")
-            conn.close()
-
-        except Exception as e:
-            print("⚠️ Ошибка при подключении к SMB:", str(e))
-            self.update_label(f"⚠️ Ошибка: {str(e)}")
-
-    def update_label(self, text):
-        # Обновление метки с результатом (в основном потоке)
-        self.result_label.text = text
-
-class SMBCheckerApp(App):
-    def build(self):
-        print("🚀 Приложение запускается!")
-        return SMBChecker()
+    print("🔗 Подключение к SMB...")
+    conn = SMBConnection(USERNAME, PASSWORD, "client_machine", "server_name", use_ntlm_v2=True)
+    try:
+        connected = conn.connect(IP_ADDRESS, PORT, timeout=5)
+        print(f"📡 Статус подключения: {connected}")
+        if connected:
+            print("✅ Успешное подключение к SMB!")
+            # Можно выполнить действия, например:
+            # shares = conn.listShares()
+            # for share in shares:
+            #     print("📁", share.name)
+        else:
+            print("❌ Не удалось подключиться к SMB.")
+    except ConnectionResetError:
+        print("🚫 Сервер сбросил соединение. Проверь настройки SMB или аутентификацию.")
+    except Exception as e:
+        print(f"⚠️ Ошибка при подключении: {e}")
 
 if __name__ == "__main__":
-    SMBCheckerApp().run()
+    connect_to_smb()
