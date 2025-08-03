@@ -9,8 +9,8 @@ from smbprotocol.session import Session
 from smbprotocol.tree import TreeConnect
 from smbprotocol.open import Open
 
-USERNAME = "YourUsername"     # ← Укажи логин
-PASSWORD = "YourPassword"     # ← Укажи пароль
+USERNAME = "afirnd"     # ← Укажи логин
+PASSWORD = "afifarm5!"     # ← Укажи пароль
 ROBOT_IP = "192.168.130.39"   # ← Укажи IP робота
 
 class SMBCheckApp(App):
