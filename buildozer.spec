@@ -36,8 +36,8 @@ version = 0.1
 # version.filename = %(source.dir)s/main.py
 
 # (list) Application requirements
-# comma separated e.g. requirements = sqlite3, kivy
-requirements = python3, kivy==2.3.1, smbprotocol, androidstorage4kivy
+# comma separated e.g. requirements = sqlite3,kivy
+requirements = python3, kivy==2.3.1, https://github.com/kivymd/KivyMD/archive/master.zip, exceptiongroup, asynckivy, asyncgui, materialyoucolor, android
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -95,7 +95,7 @@ fullscreen = 0
 
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions/#build-options-1 for all the supported syntaxes and properties)
-android.permissions = android.permission.INTERNET, android.permission.ACCESS_NETWORK_STATE, android.permission.ACCESS_WIFI_STATE, android.permission.ACCESS_FINE_LOCATION, android.permission.BLUETOOTH
+android.permissions = android.permission.INTERNET, android.permission.ACCESS_NETWORK_STATE
 
 #(name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
 
