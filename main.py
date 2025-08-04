@@ -1,65 +1,49 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QTextEdit
-from smb.SMBConnection import SMBConnection
-from smb.base import NotConnectedError
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.core.window import Window
 
+from smb.SMBConnection import SMBConnection
+import socket
+
+# Параметры подключения
 USER = 'afirnd'
 PASSWORD = 'afifarm5!'
 SERVER = 'R0000014'
 IP = '192.168.130.39'
 
+class MainLayout(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(orientation='vertical', spacing=10, padding=20, **kwargs)
 
-class FileChecker(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-        self.conn = None
+        self.check_btn = Button(text='Проверить SMB', size_hint_y=None, height=50)
+        self.check_btn.bind(on_press=self.check_smb)
+        self.add_widget(self.check_btn)
 
-    def initUI(self):
-        self.setWindowTitle('SMB File Checker')
-        self.resize(400, 300)
+        self.output = Label(text='Нажмите кнопку для проверки', size_hint_y=1)
+        self.add_widget(self.output)
 
-        layout = QVBoxLayout()
-
-        self.result = QTextEdit()
-        self.result.setReadOnly(True)
-        layout.addWidget(self.result)
-
-        btn_connect = QPushButton('🔌 Подключиться и проверить файл')
-        btn_connect.clicked.connect(self.check_file)
-        layout.addWidget(btn_connect)
-
-        self.setLayout(layout)
-
-    def check_file(self):
-        self.result.clear()
-
+    def check_smb(self, instance):
         try:
-            self.conn = SMBConnection(USER, PASSWORD, 'android-client', SERVER, use_ntlm_v2=True)
-            connected = self.conn.connect(IP, 445)
-            if not connected:
-                self.result.setText('❌ Не удалось подключиться к серверу.')
-                return
+            conn = SMBConnection(USER, PASSWORD, "android_client", SERVER, use_ntlm_v2=True)
+            connected = conn.connect(IP, 139)  # Порт может быть 445, если 139 не отвечает
 
-            shares = self.conn.listShares()
-            if not any(share.name == 'Afimilk' for share in shares):
-                self.result.setText('❌ Шара Afimilk не найдена.')
-                return
-
-            files = self.conn.listPath('Afimilk', '/Robot/')
-            filenames = [f.filename for f in files if not f.isDirectory]
-            if 'RMC.exe' in filenames:
-                self.result.setText('✅ Файл RMC.exe найден!\n\nСписок файлов:\n' + '\n'.join(filenames))
+            if connected:
+                shares = conn.listShares()
+                share_names = [share.name for share in shares if not share.isSpecial and share.name != '']
+                self.output.text = f"Подключено. Доступные шары:\n" + "\n".join(share_names)
+                conn.close()
             else:
-                self.result.setText('❌ Файл RMC.exe не найден.\n\nСписок файлов:\n' + '\n'.join(filenames))
-
-        except NotConnectedError:
-            self.result.setText('❌ Ошибка: нет подключения к SMB.')
+                self.output.text = "Не удалось подключиться к SMB серверу."
         except Exception as e:
-            self.result.setText(f'⚠️ Произошла ошибка:\n{str(e)}')
+            self.output.text = f"Ошибка: {str(e)}"
+
+class SMBApp(App):
+    def build(self):
+        Window.clearcolor = (1, 1, 1, 1)
+        return MainLayout()
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = FileChecker()
-    window.show()
-    sys.exit(app.exec_())
+    SMBApp().run()
