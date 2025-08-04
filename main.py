@@ -36,7 +36,7 @@ class FileChecker(QWidget):
 
         try:
             self.conn = SMBConnection(USER, PASSWORD, 'android-client', SERVER, use_ntlm_v2=True)
-            connected = self.conn.connect(IP, 139)
+            connected = self.conn.connect(IP, 445)
             if not connected:
                 self.result.setText('❌ Не удалось подключиться к серверу.')
                 return
